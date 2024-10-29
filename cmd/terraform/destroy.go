@@ -1,4 +1,4 @@
-package tfplan
+package terraform
 
 import (
 	"github.com/clouddrove/smurf/cmd"
@@ -6,15 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var planCmd = &cobra.Command{
-	Use:   "plan",
-	Short: "Generate and show an execution plan for Terraform",
+var destroyCmd = &cobra.Command{
+	Use:   "destroy",
+	Short: "Destroy the Terraform Infrastructure",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		return terraform.Plan()
+		return terraform.Destroy()
 	},
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(planCmd)
+	cmd.RootCmd.AddCommand(destroyCmd)
 }

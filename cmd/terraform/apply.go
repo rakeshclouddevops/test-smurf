@@ -1,4 +1,4 @@
-package tfapply
+package terraform
 
 import (
 	"github.com/clouddrove/smurf/cmd"

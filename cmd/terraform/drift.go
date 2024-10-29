@@ -1,4 +1,4 @@
-package tfdrift
+package terraform
 
 import (
 	"github.com/clouddrove/smurf/cmd"

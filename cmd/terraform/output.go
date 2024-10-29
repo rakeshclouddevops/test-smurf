@@ -1,4 +1,4 @@
-package tfoutput
+package terraform
 
 
 import (

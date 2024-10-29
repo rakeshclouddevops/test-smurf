@@ -1,4 +1,4 @@
-package tfdestroy
+package terraform
 
 import (
 	"github.com/clouddrove/smurf/cmd"
@@ -6,15 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var destroyCmd = &cobra.Command{
-	Use:   "destroy",
-	Short: "Destroy the Terraform Infrastructure",
+var initCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Initialize Terraform",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		return terraform.Destroy()
+		return terraform.Init()
 	},
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(destroyCmd)
+	cmd.RootCmd.AddCommand(initCmd)
 }

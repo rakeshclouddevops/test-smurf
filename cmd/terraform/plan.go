@@ -1,4 +1,4 @@
-package tfinit
+package terraform
 
 import (
 	"github.com/clouddrove/smurf/cmd"
@@ -6,15 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initialize Terraform",
+var planCmd = &cobra.Command{
+	Use:   "plan",
+	Short: "Generate and show an execution plan for Terraform",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		return terraform.Init()
+		return terraform.Plan()
 	},
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(initCmd)
+	cmd.RootCmd.AddCommand(planCmd)
 }
