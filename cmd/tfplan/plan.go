@@ -1,4 +1,4 @@
-package drift
+package tfplan
 
 import (
 	"github.com/clouddrove/smurf/cmd"
@@ -6,15 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var driftCmd = &cobra.Command{
-	Use:   "drift",
-	Short: "Detect drift between state and infrastructure  for Terraform",
+var planCmd = &cobra.Command{
+	Use:   "plan",
+	Short: "Generate and show an execution plan for Terraform",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		return terraform.DetectDrift()
+		return terraform.Plan()
 	},
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(driftCmd)
+	cmd.RootCmd.AddCommand(planCmd)
 }

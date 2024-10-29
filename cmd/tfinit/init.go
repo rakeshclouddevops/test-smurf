@@ -1,4 +1,4 @@
-package init
+package tfinit
 
 import (
 	"github.com/clouddrove/smurf/cmd"

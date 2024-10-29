@@ -1,4 +1,4 @@
-package apply
+package tfapply
 
 import (
 	"github.com/clouddrove/smurf/cmd"

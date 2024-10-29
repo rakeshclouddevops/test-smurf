@@ -1,4 +1,4 @@
-package plan
+package tfplan
 
 import (
 	"github.com/clouddrove/smurf/cmd"

@@ -1,4 +1,4 @@
-package destroy
+package tfdrift
 
 import (
 	"github.com/clouddrove/smurf/cmd"
@@ -6,15 +6,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var destroyCmd = &cobra.Command{
-	Use:   "destroy",
-	Short: "Destroy the Terraform Infrastructure",
+var driftCmd = &cobra.Command{
+	Use:   "drift",
+	Short: "Detect drift between state and infrastructure  for Terraform",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		return terraform.Destroy()
+		return terraform.DetectDrift()
 	},
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(destroyCmd)
+	cmd.RootCmd.AddCommand(driftCmd)
 }
