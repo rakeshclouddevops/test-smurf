@@ -31,7 +31,6 @@ func getTerraform() (*tfexec.Terraform, error) {
 
 // terraform init cmd
 func Init() error {
-
 	tf, err := getTerraform()
 	if err != nil {
 		return err
@@ -50,7 +49,6 @@ func Init() error {
 
 // terraform plan cmd
 func Plan() error {
-
 	tf, err := getTerraform()
 	if err != nil {
 		return err
@@ -74,7 +72,6 @@ func Plan() error {
 
 // terraform apply cmd
 func Apply() error {
-
 	tf, err := getTerraform()
 	if err != nil {
 		return err
