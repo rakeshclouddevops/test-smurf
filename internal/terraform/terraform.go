@@ -43,7 +43,37 @@ func Init() error {
 		return err
 	}
 
+	log.Info("Validating Terraform configuration...")
+	err = Validate()
+	if err != nil {
+		return err
+	}
+
 	log.Info("Terraform initialized successfully.")
+	return nil
+}
+
+func Validate() error {
+	tf, err := getTerraform()
+	if err != nil {
+		return err
+	}
+
+	log.Println("Validating Terraform configuration...")
+
+	// Run the validate command
+	valid, err := tf.Validate(context.Background())
+	if err != nil {
+		log.Printf("Terraform validation failed: %v", err)
+		return err
+	}
+
+	if valid.Valid {
+		log.Println("Terraform configuration is valid.")
+	} else {
+		log.Println("Terraform configuration is invalid.")
+	}
+
 	return nil
 }
 
@@ -57,6 +87,12 @@ func Plan() error {
 	// Set the stdout and stderr to os.Stdout and os.Stderr to capture Terraform's output
 	tf.SetStdout(os.Stdout)
 	tf.SetStderr(os.Stderr)
+
+	log.Info("Validating Terraform configuration...")
+	err = Validate()
+	if err != nil {
+		return err
+	}
 
 	log.Info("Running Terraform plan...")
 
@@ -73,6 +109,12 @@ func Plan() error {
 // terraform apply cmd
 func Apply() error {
 	tf, err := getTerraform()
+	if err != nil {
+		return err
+	}
+
+	log.Info("Validating Terraform configuration...")
+	err = Validate()
 	if err != nil {
 		return err
 	}
@@ -115,6 +157,12 @@ func DetectDrift() error {
 		return err
 	}
 
+	log.Info("Validating Terraform configuration...")
+	err = Validate()
+	if err != nil {
+		return err
+	}
+
 	planFile := "drift.plan"
 	log.Info("Checking for drift...")
 	_, err = tf.Plan(context.Background(), tfexec.Out(planFile), tfexec.Refresh(true))
@@ -152,6 +200,8 @@ func Output() error {
 	// Set stdout and stderr to capture any messages
 	tf.SetStdout(os.Stdout)
 	tf.SetStderr(os.Stderr)
+
+	
 
 	// Refresh the state to ensure outputs are up to date
 	err = tf.Refresh(context.Background())
