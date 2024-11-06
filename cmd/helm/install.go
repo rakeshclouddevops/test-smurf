@@ -6,7 +6,7 @@ import (
 )
 
 var installCmd = &cobra.Command{
-	Use:   "install [NAME] [CHART]",
+	Use:   "install [RELEASE] [CHART]",
 	Short: "Install a Helm chart into a Kubernetes cluster.",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
