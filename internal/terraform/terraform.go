@@ -82,7 +82,7 @@ func Validate() error {
 }
 
 // Plan runs 'terraform plan' and outputs the plan to the console
-func Plan() error {
+func Plan(varNameValue string, varFile string) error {
 	tf, err := getTerraform()
 	if err != nil {
 		return err
@@ -102,9 +102,24 @@ func Plan() error {
 	tf.SetStderr(customWriter)
 
 	pterm.Info.Println("Running Terraform plan...")
+	spinner, _ := pterm.DefaultSpinner.Start("Running terraform plan")
+
+	if varNameValue != "" {
+		pterm.Info.Printf("Setting variable: %s\n", varNameValue)
+		tf.Plan(context.Background(), tfexec.Var(varNameValue))
+	}
+
+	if varFile != "" {
+		pterm.Info.Printf("Setting variable file: %s\n", varFile)
+		_, err = tf.Plan(context.Background(), tfexec.VarFile(varFile))
+		if err != nil {
+			spinner.Fail("Terraform plan failed")
+			pterm.Error.Printf("Terraform plan failed: %v\n", err)
+			return err
+		}
+	}
 
 	// Run the plan and output to console
-	spinner, _ := pterm.DefaultSpinner.Start("Running terraform plan")
 	_, err = tf.Plan(context.Background())
 	if err != nil {
 		spinner.Fail("Terraform plan failed")
