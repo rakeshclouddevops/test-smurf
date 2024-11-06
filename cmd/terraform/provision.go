@@ -24,7 +24,7 @@ var provisionCmd = &cobra.Command{
 				errChan <- err
 			}
 		}()
-		if err := terraform.Plan(); err != nil {
+		if err := terraform.Plan("", ""); err != nil {
 			return err
 		}
 
