@@ -58,41 +58,42 @@ func getKubeClient() (*kubernetes.Clientset, error) {
 }
 
 func CreateChart(chartName, saveDir string) error {
-	spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Installing release '%s'", chartName))
+	// Start spinner with a clear message
+	spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Creating chart '%s' in directory '%s'", chartName, saveDir))
+
 	// Ensure the directory exists
 	if _, err := os.Stat(saveDir); os.IsNotExist(err) {
-		os.MkdirAll(saveDir, os.ModePerm)
+		if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
+			spinner.Fail(fmt.Sprintf("Failed to create directory: %s", saveDir))
+			color.Red("Error: %v", err)
+			return err
+		}
 	}
 
-	// Create the chart in the specified directory
+	// Attempt to create the chart
 	_, err := chartutil.Create(chartName, saveDir)
 	if err != nil {
-		spinner.Fail()
+		spinner.Fail(fmt.Sprintf("Failed to create chart '%s'", chartName))
+		color.Red("Error: %v", err)
 		return err
 	}
 
-	spinner.Success(fmt.Sprintf("Chart created successfully: %s", chartName))
+	// Success message with path to chart
+	spinner.Success(fmt.Sprintf("Chart '%s' created successfully in '%s'", chartName, saveDir))
+	color.Green("Chart '%s' has been successfully created in the directory '%s'.", chartName, saveDir)
 	return nil
 }
 
 func HelmInstall(releaseName, chartPath, namespace string) error {
-	spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Installing release '%s'", releaseName))
+	settings := cli.New()
+	kubeConfigPath := filepath.Join(os.Getenv("HOME"), ".kube", "config")
+	settings.KubeConfig = kubeConfigPath
 
-	// Initialize action configuration
 	actionConfig := new(action.Configuration)
-	debugLog := func(format string, v ...interface{}) {
+	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), func(format string, v ...interface{}) {
 		fmt.Printf(format, v...)
-	}
-	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), debugLog); err != nil {
-		spinner.Fail("Failed to initialize Helm action configuration: " + err.Error())
-		return err
-	}
-
-	kubeClient, err := getKubeClient()
-
-	_ = kubeClient
-	if err != nil {
-		spinner.Fail("Failed to get Kubernetes client: " + err.Error())
+	}); err != nil {
+		color.Red("Failed to initialize Helm action configuration: %v\n", err)
 		return err
 	}
 
@@ -100,72 +101,97 @@ func HelmInstall(releaseName, chartPath, namespace string) error {
 	client.ReleaseName = releaseName
 	client.Namespace = namespace
 
-	// Load the chart
 	chart, err := loader.Load(chartPath)
 	if err != nil {
-		spinner.Fail("Failed to load chart: " + err.Error())
+		color.Red("Failed to load chart: %v\n", err)
 		return err
 	}
 
-	_, err = client.Run(chart, map[string]interface{}{})
+	release, err := client.Run(chart, nil) // Assumes no values override, modify as necessary
 	if err != nil {
-		spinner.Fail("Installation failed: " + err.Error())
+		color.Red("Installation failed: %v\n", err)
 		return err
 	}
 
-	spinner.Success(fmt.Sprintf("Release '%s' installed successfully", releaseName))
+	color.Green("NAME: %s\n", release.Name)
+	color.Green("LAST DEPLOYED: %s\n", release.Info.LastDeployed)
+	color.Green("NAMESPACE: %s\n", release.Namespace)
+	color.Green("STATUS: %s\n", release.Info.Status)
+	color.Green("REVISION: %d\n", release.Version)
+	color.Green("NOTES:\n%s\n", release.Info.Notes)
+
+	// Optionally provide commands to interact with the deployed application
+	color.Cyan("Get the application URL by running these commands:\n")
+	color.Cyan("export POD_NAME=$(kubectl get pods --namespace %s -l \"app.kubernetes.io/name=%s,app.kubernetes.io/instance=%s\" -o jsonpath=\"{.items[0].metadata.name}\")\n", namespace, chart.Metadata.Name, release.Name)
+	color.Cyan("export CONTAINER_PORT=$(kubectl get pod --namespace %s $POD_NAME -o jsonpath=\"{.spec.containers[0].ports[0].containerPort}\")\n", namespace)
+	color.Cyan("echo \"Visit http://127.0.0.1:8080 to use your application\"\n")
+	color.Cyan("kubectl --namespace %s port-forward $POD_NAME 8080:$CONTAINER_PORT\n", namespace)
+
 	return nil
 }
 
+
+// EnsureNamespace checks and creates the namespace if necessary
 func EnsureNamespace(namespace string, create bool) error {
-	kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
-		return err
-	}
+    clientset, err := getKubeClient()
+    if err != nil {
+        return err
+    }
+    _, err = clientset.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
+    if err == nil {
+        return nil // Namespace exists
+    }
 
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return err
-	}
+    // If namespace doesn't exist and creation is enabled
+    if create {
+        ns := &v1.Namespace{
+            ObjectMeta: metav1.ObjectMeta{
+                Name: namespace,
+            },
+        }
+        _, err = clientset.CoreV1().Namespaces().Create(context.Background(), ns, metav1.CreateOptions{})
+        if err != nil {
+            return fmt.Errorf("Failed to create namespace '%s': %v", namespace, err)
+        }
+        fmt.Println("Namespace created successfully")
+    } else {
+        return fmt.Errorf("Namespace '%s' does not exist and was not created", namespace)
+    }
 
-	_, err = clientset.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
-	if err == nil {
-		return nil // Namespace exists
-	}
-
-	if create {
-		nsSpec := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
-		_, err = clientset.CoreV1().Namespaces().Create(context.TODO(), nsSpec, metav1.CreateOptions{})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+    return nil
 }
 
 func HelmUpgrade(releaseName, chartPath, namespace string, setValues []string, valuesFiles []string, createNamespace, atomic bool, timeout time.Duration, debug bool) error {
-	spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Upgrading release '%s'", releaseName))
 	settings := cli.New()
-	if debug {
-		settings.Debug = true
-	}
+	settings.Debug = debug
+	spinner, _ := pterm.DefaultSpinner.Start("Upgrading release...")
 
 	if createNamespace {
 		if err := EnsureNamespace(namespace, true); err != nil {
 			spinner.Fail("Failed to ensure namespace: " + err.Error())
+			color.Red("Error: %v\n", err)
 			return err
 		}
 	}
 
+	// if createNamespace {
+	// 	clientset, err := getKubeClient()
+	// 	if err != nil {
+	// 		spinner.Fail("Failed to get Kubernetes client: " + err.Error())
+	// 		color.Red("Error: %v\n", err)
+	// 		return err
+	// 	}
+	// 	if err := EnsureNamespace(clientset, namespace, true); err != nil {
+			
+	// 	}
+	// }
+
 	actionConfig := new(action.Configuration)
-	debugLog := func(format string, v ...interface{}) {
-		if settings.Debug {
-			fmt.Printf(format, v...)
-		}
-	}
-	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), debugLog); err != nil {
+	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), func(format string, v ...interface{}) {
+		fmt.Printf(format, v...)
+	}); err != nil {
 		spinner.Fail("Failed to initialize Helm action configuration: " + err.Error())
+		color.Red("Error: %v\n", err)
 		return err
 	}
 
@@ -177,52 +203,82 @@ func HelmUpgrade(releaseName, chartPath, namespace string, setValues []string, v
 	chart, err := loader.Load(chartPath)
 	if err != nil {
 		spinner.Fail("Failed to load chart: " + err.Error())
+		color.Red("Error: %v\n", err)
 		return err
 	}
 
+	// Load the additional values files
 	vals := make(map[string]interface{})
 	for _, f := range valuesFiles {
-		currentVals, err := chartutil.ReadValuesFile(f)
+		additionalVals, err := chartutil.ReadValuesFile(f)
 		if err != nil {
-			spinner.Fail("Failed to read values file: " + err.Error())
+			spinner.Fail(fmt.Sprintf("Failed to read values file: %s", f))
+			color.Red("Error reading values file %s: %v\n", f, err)
 			return err
 		}
-		chartutil.CoalesceTables(vals, currentVals)
+		// Correctly merging additional values
+		for key, value := range additionalVals {
+			vals[key] = value
+		}
 	}
 
 	for _, set := range setValues {
 		if err := strvals.ParseInto(set, vals); err != nil {
 			spinner.Fail("Failed to parse set values: " + err.Error())
+			color.Red("Error: %v\n", err)
 			return err
 		}
 	}
 
-	_, err = client.Run(releaseName, chart, vals)
+	rel, err := client.Run(releaseName, chart, vals)
 	if err != nil {
 		spinner.Fail("Upgrade failed: " + err.Error())
-	} else {
-		spinner.Success(fmt.Sprintf("Release '%s' upgraded successfully", releaseName))
+		color.Red("Error: %v\n", err)
+		return err
 	}
-	return err
+
+	spinner.Success(fmt.Sprintf("Release '%s' upgraded successfully in namespace '%s'", releaseName, namespace))
+	color.Green("NAME: %s\n", rel.Name)
+	color.Green("LAST DEPLOYED: %s\n", rel.Info.LastDeployed)
+	color.Green("NAMESPACE: %s\n", rel.Namespace)
+	color.Green("STATUS: %s\n", rel.Info.Status.String())
+	color.Green("REVISION: %d\n", rel.Version)
+	color.Green("NOTES:\n%s\n", rel.Info.Notes)
+
+	return nil
 }
 
 func HelmList(namespace string) ([]*release.Release, error) {
-	spinner, _ := pterm.DefaultSpinner.Start("Listing releases")
+	settings := cli.New()
 	actionConfig := new(action.Configuration)
+	spinner, _ := pterm.DefaultSpinner.Start("Listing releases in namespace: " + namespace)
+
 	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, "secrets", nil); err != nil {
-		spinner.Fail(err.Error())
+		spinner.Fail("Failed to initialize action configuration")
+		color.Red("Error: %s", err.Error())
 		return nil, err
 	}
+
 	client := action.NewList(actionConfig)
-	// client.Namespace = namespace
+	client.AllNamespaces = true // Adjust based on whether you want all namespaces or just one
 
 	releases, err := client.Run()
 	if err != nil {
-		spinner.Fail(err.Error())
-	} else {
-		spinner.Success("Releases listed successfully")
+		spinner.Fail("Failed to list releases")
+		color.Red("Error: %s", err.Error())
+		return nil, err
 	}
-	return releases, err
+
+	spinner.Stop()
+	fmt.Println()
+	color.Cyan("%-17s %-10s %-8s %-20s %-7s %-30s", "NAME", "NAMESPACE", "REVISION", "UPDATED", "STATUS", "CHART")
+	for _, rel := range releases {
+		updatedStr := rel.Info.LastDeployed.Local().Format("2006-01-02 15:04:05.999999999 -0700 MST")
+		color.White("%-17s %-10s %-8d %-20s %-7s %-30s",
+			rel.Name, rel.Namespace, rel.Version, updatedStr, rel.Info.Status.String(), rel.Chart.Metadata.Name+"-"+rel.Chart.Metadata.Version)
+	}
+
+	return releases, nil
 }
 
 func HelmUninstall(releaseName, namespace string) error {
