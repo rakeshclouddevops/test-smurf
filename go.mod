@@ -8,6 +8,8 @@ require (
 	github.com/pterm/pterm v0.12.79
 	github.com/spf13/cobra v1.8.1
 	helm.sh/helm/v3 v3.16.2
+	k8s.io/api v0.31.1
+	k8s.io/apimachinery v0.31.1
 	k8s.io/client-go v0.31.1
 )
 
@@ -142,9 +144,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.31.1 // indirect
 	k8s.io/apiextensions-apiserver v0.31.1 // indirect
-	k8s.io/apimachinery v0.31.1 // indirect
 	k8s.io/apiserver v0.31.1 // indirect
 	k8s.io/cli-runtime v0.31.1 // indirect
 	k8s.io/component-base v0.31.1 // indirect
