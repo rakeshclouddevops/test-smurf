@@ -478,3 +478,53 @@ func ReleaseExists(releaseName, namespace string) (bool, error) {
 
     return false, nil // Release not found
 }
+
+
+
+
+// Status retrieves the status of a Helm release
+func Status(releaseName, namespace string) error {
+    settings := cli.New()
+
+    actionConfig := new(action.Configuration)
+	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, "secrets", func(format string, v ...interface{}) {
+		if settings.Debug {
+			fmt.Printf(format, v...)
+		}
+	}); err != nil {
+        return fmt.Errorf("failed to initialize Helm client: %w", err)
+    }
+
+    statusAction := action.NewStatus(actionConfig)
+
+    release, err := statusAction.Run(releaseName)
+    if err != nil {
+        pterm.Error.Println("Retrieving status failed")
+        color.Red("Error: %s", err.Error())
+        return err
+    }
+
+    data := [][]string{
+        {"NAME", release.Name},
+        {"NAMESPACE", release.Namespace},
+        {"STATUS", release.Info.Status.String()},
+        {"REVISION", fmt.Sprintf("%d", release.Version)},
+        {"TEST SUITE", "None"}, 
+    }
+
+    pterm.DefaultTable.WithHasHeader(false).WithData(data).Render()
+
+    if release.Info.Notes != "" {
+        pterm.Info.Println("NOTES:")
+        fmt.Println(color.CyanString(release.Info.Notes))
+        fmt.Println(color.GreenString("Get the application URL by running these commands:"))
+        fmt.Println(color.GreenString("export POD_NAME=$(kubectl get pods --namespace " + release.Namespace + " -l \"app.kubernetes.io/name=" + release.Chart.Metadata.Name + ",app.kubernetes.io/instance=" + release.Name + "\" -o jsonpath=\"{.items[0].metadata.name}\")"))
+        fmt.Println(color.GreenString("export CONTAINER_PORT=$(kubectl get pod --namespace " + release.Namespace + " $POD_NAME -o jsonpath=\"{.spec.containers[0].ports[0].containerPort}\")"))
+        fmt.Println(color.GreenString("echo \"Visit http://127.0.0.1:8080 to use your application\""))
+        fmt.Println(color.GreenString("kubectl --namespace " + release.Namespace + " port-forward $POD_NAME 8080:$CONTAINER_PORT"))
+    } else {
+        pterm.Warning.Println(color.YellowString("No additional notes provided for this release."))
+    }
+
+    return nil
+}
