@@ -58,10 +58,8 @@ func getKubeClient() (*kubernetes.Clientset, error) {
 }
 
 func CreateChart(chartName, saveDir string) error {
-	// Start spinner with a clear message
 	spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Creating chart '%s' in directory '%s'", chartName, saveDir))
 
-	// Ensure the directory exists
 	if _, err := os.Stat(saveDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
 			spinner.Fail(fmt.Sprintf("Failed to create directory: %s", saveDir))
@@ -70,7 +68,6 @@ func CreateChart(chartName, saveDir string) error {
 		}
 	}
 
-	// Attempt to create the chart
 	_, err := chartutil.Create(chartName, saveDir)
 	if err != nil {
 		spinner.Fail(fmt.Sprintf("Failed to create chart '%s'", chartName))
@@ -78,7 +75,6 @@ func CreateChart(chartName, saveDir string) error {
 		return err
 	}
 
-	// Success message with path to chart
 	spinner.Success(fmt.Sprintf("Chart '%s' created successfully in '%s'", chartName, saveDir))
 	color.Green("Chart '%s' has been successfully created in the directory '%s'.", chartName, saveDir)
 	return nil
@@ -107,7 +103,7 @@ func HelmInstall(releaseName, chartPath, namespace string) error {
 		return err
 	}
 
-	release, err := client.Run(chart, nil) // Assumes no values override, modify as necessary
+	release, err := client.Run(chart, nil) 
 	if err != nil {
 		color.Red("Installation failed: %v\n", err)
 		return err
@@ -120,7 +116,6 @@ func HelmInstall(releaseName, chartPath, namespace string) error {
 	color.Green("REVISION: %d\n", release.Version)
 	color.Green("NOTES:\n%s\n", release.Info.Notes)
 
-	// Optionally provide commands to interact with the deployed application
 	color.Cyan("Get the application URL by running these commands:\n")
 	color.Cyan("export POD_NAME=$(kubectl get pods --namespace %s -l \"app.kubernetes.io/name=%s,app.kubernetes.io/instance=%s\" -o jsonpath=\"{.items[0].metadata.name}\")\n", namespace, chart.Metadata.Name, release.Name)
 	color.Cyan("export CONTAINER_PORT=$(kubectl get pod --namespace %s $POD_NAME -o jsonpath=\"{.spec.containers[0].ports[0].containerPort}\")\n", namespace)
@@ -131,18 +126,17 @@ func HelmInstall(releaseName, chartPath, namespace string) error {
 }
 
 
-// EnsureNamespace checks and creates the namespace if necessary
-func EnsureNamespace(namespace string, create bool) error {
+// ensureNamespace checks and creates the namespace if necessary
+func ensureNamespace(namespace string, create bool) error {
     clientset, err := getKubeClient()
     if err != nil {
         return err
     }
     _, err = clientset.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
     if err == nil {
-        return nil // Namespace exists
+        return nil 
     }
 
-    // If namespace doesn't exist and creation is enabled
     if create {
         ns := &v1.Namespace{
             ObjectMeta: metav1.ObjectMeta{
@@ -167,24 +161,13 @@ func HelmUpgrade(releaseName, chartPath, namespace string, setValues []string, v
 	spinner, _ := pterm.DefaultSpinner.Start("Upgrading release...")
 
 	if createNamespace {
-		if err := EnsureNamespace(namespace, true); err != nil {
+		if err := ensureNamespace(namespace, true); err != nil {
 			spinner.Fail("Failed to ensure namespace: " + err.Error())
 			color.Red("Error: %v\n", err)
 			return err
 		}
 	}
 
-	// if createNamespace {
-	// 	clientset, err := getKubeClient()
-	// 	if err != nil {
-	// 		spinner.Fail("Failed to get Kubernetes client: " + err.Error())
-	// 		color.Red("Error: %v\n", err)
-	// 		return err
-	// 	}
-	// 	if err := EnsureNamespace(clientset, namespace, true); err != nil {
-			
-	// 	}
-	// }
 
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), func(format string, v ...interface{}) {
@@ -207,7 +190,7 @@ func HelmUpgrade(releaseName, chartPath, namespace string, setValues []string, v
 		return err
 	}
 
-	// Load the additional values files
+
 	vals := make(map[string]interface{})
 	for _, f := range valuesFiles {
 		additionalVals, err := chartutil.ReadValuesFile(f)
@@ -216,7 +199,6 @@ func HelmUpgrade(releaseName, chartPath, namespace string, setValues []string, v
 			color.Red("Error reading values file %s: %v\n", f, err)
 			return err
 		}
-		// Correctly merging additional values
 		for key, value := range additionalVals {
 			vals[key] = value
 		}
@@ -260,7 +242,7 @@ func HelmList(namespace string) ([]*release.Release, error) {
 	}
 
 	client := action.NewList(actionConfig)
-	client.AllNamespaces = true // Adjust based on whether you want all namespaces or just one
+	client.AllNamespaces = true
 
 	releases, err := client.Run()
 	if err != nil {
@@ -285,7 +267,6 @@ func HelmUninstall(releaseName, namespace string) error {
 	spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Uninstalling release '%s'", releaseName))
 
 	actionConfig := new(action.Configuration)
-	// Initialize the configuration with a debug function for better tracing
 	debugLog := func(format string, v ...interface{}) {
 		fmt.Printf(format, v...)
 	}
@@ -294,14 +275,13 @@ func HelmUninstall(releaseName, namespace string) error {
 		return err
 	}
 
-	// Create a new uninstall action
+
 	client := action.NewUninstall(actionConfig)
 	if client == nil {
 		spinner.Fail("Failed to create Helm uninstall client")
 		return fmt.Errorf("failed to create Helm uninstall client")
 	}
 
-	// Perform the uninstall
 	_, err := client.Run(releaseName)
 	if err != nil {
 		spinner.Fail("Uninstall failed: " + err.Error())
@@ -312,6 +292,7 @@ func HelmUninstall(releaseName, namespace string) error {
 	return nil
 }
 
+// HelmLint lints a Helm chart
 func HelmLint(chartPath string) error {
 	spinner, _ := pterm.DefaultSpinner.Start("Linting chart")
 	actionConfig := new(action.Configuration)
@@ -332,7 +313,7 @@ func HelmLint(chartPath string) error {
 
 // HelmTemplate renders the Helm templates for a given chart
 func HelmTemplate(releaseName, chartPath, namespace string) error {
-	settings := cli.New() // Ensures that we have a new Helm environment setup
+	settings := cli.New() 
 	actionConfig := new(action.Configuration)
 
 	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), nil); err != nil {
@@ -341,13 +322,13 @@ func HelmTemplate(releaseName, chartPath, namespace string) error {
 	}
 
 	client := action.NewInstall(actionConfig)
-	client.DryRun = true // Important: Dry run must be true for template rendering
+	client.DryRun = true 
 	client.ReleaseName = releaseName
 	client.Namespace = namespace
-	client.Replace = true    // Re-use the release name without an error for repeated calls
-	client.ClientOnly = true // Do not validate against the Kubernetes cluster
+	client.Replace = true   
+	client.ClientOnly = true 
 
-	// Load the chart
+
 	chart, err := loader.Load(chartPath)
 	if err != nil {
 		pterm.DefaultBasicText.WithStyle(pterm.NewStyle(pterm.FgRed)).Println(err.Error())
@@ -355,23 +336,21 @@ func HelmTemplate(releaseName, chartPath, namespace string) error {
 	}
 
 	spinner, _ := pterm.DefaultSpinner.Start("Rendering Helm templates...")
-	// Run the installation simulation which renders the template
-	rel, err := client.Run(chart, nil) // Pass nil because we do not have any overridden values
+	rel, err := client.Run(chart, nil) 
 	if err != nil {
 		spinner.Fail(err.Error())
 		return err
 	}
 	spinner.Success("Templates rendered successfully")
 
-	// Output the rendered templates
 	green := color.New(color.FgGreen).SprintFunc()
 	fmt.Println(green(rel.Manifest))
 
 	return nil
 }
 
-// Provision provisions a Helm chart by installing or upgrading it, linting it, and rendering its templates
-func Provision(releaseName, chartPath, namespace string) error {
+// HelmProvision provisions a Helm chart by installing or upgrading it, linting it, and rendering its templates
+func HelmProvision(releaseName, chartPath, namespace string) error {
 	settings := cli.New()
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), namespace, os.Getenv("HELM_DRIVER"), nil); err != nil {
@@ -434,7 +413,6 @@ func Provision(releaseName, chartPath, namespace string) error {
 		if templateErr != nil {
 			pterm.Error.Println("Template rendering failed:", templateErr)
 		}
-		// make this return error in red color
 		return fmt.Errorf(color.RedString("Provisioning failed"))
 	}
 
@@ -447,11 +425,10 @@ func Provision(releaseName, chartPath, namespace string) error {
 
 
 
-// ReleaseExists checks if a specific release exists in the given namespace
-func ReleaseExists(releaseName, namespace string) (bool, error) {
+// HelmReleaseExists checks if a specific release exists in the given namespace
+func HelmReleaseExists(releaseName, namespace string) (bool, error) {
     settings := cli.New() 
 
-    // Set the KubeConfig path if not already set
     if settings.KubeConfig == "" {
         kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
         settings.KubeConfig = kubeConfigPath
@@ -467,23 +444,23 @@ func ReleaseExists(releaseName, namespace string) (bool, error) {
     list.AllNamespaces = false
     releases, err := list.Run()
     if err != nil {
-        return false, err // Unable to list releases
+        return false, err
     }
 
     for _, rel := range releases {
         if rel.Name == releaseName && rel.Namespace == namespace {
-            return true, nil // Release found in the specified namespace
+            return true, nil 
         }
     }
 
-    return false, nil // Release not found
+    return false, nil 
 }
 
 
 
 
-// Status retrieves the status of a Helm release
-func Status(releaseName, namespace string) error {
+// HelmStatus retrieves the status of a Helm release
+func HelmStatus(releaseName, namespace string) error {
     settings := cli.New()
 
     actionConfig := new(action.Configuration)
