@@ -441,3 +441,40 @@ func Provision(releaseName, chartPath, namespace string) error {
 	pterm.Success.Println("Provisioning completed successfully.")
 	return nil
 }
+
+
+
+
+
+
+// ReleaseExists checks if a specific release exists in the given namespace
+func ReleaseExists(releaseName, namespace string) (bool, error) {
+    settings := cli.New() 
+
+    // Set the KubeConfig path if not already set
+    if settings.KubeConfig == "" {
+        kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
+        settings.KubeConfig = kubeConfigPath
+    }
+
+    actionConfig := new(action.Configuration)
+    if err := actionConfig.Init(settings.RESTClientGetter(), namespace, "secrets", nil); err != nil {
+        return false, err
+    }
+
+    list := action.NewList(actionConfig)
+    list.Deployed = true 
+    list.AllNamespaces = false
+    releases, err := list.Run()
+    if err != nil {
+        return false, err // Unable to list releases
+    }
+
+    for _, rel := range releases {
+        if rel.Name == releaseName && rel.Namespace == namespace {
+            return true, nil // Release found in the specified namespace
+        }
+    }
+
+    return false, nil // Release not found
+}
