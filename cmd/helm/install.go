@@ -23,6 +23,6 @@ var installCmd = &cobra.Command{
 
 func init() {
     // Add the namespace flag
-    installCmd.Flags().StringVarP(&installNamespace, "namespace", "n", "", "Specify the namespace to install the Helm chart into")
+    installCmd.Flags().StringVarP(&installNamespace, "namespace", "n", "", "Specify the namespace to install the Helm chart")
     selmCmd.AddCommand(installCmd)
 }

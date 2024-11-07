@@ -16,11 +16,11 @@ var uninstallCmd = &cobra.Command{
 		if uninstallNamespace == "" { // If no namespace is provided, use default
             uninstallNamespace = "default"
         }
-		return helm.HelmUninstall(releaseName, uninstallNamespace) // Assuming 'default' namespace or make it a flag
+		return helm.HelmUninstall(releaseName, uninstallNamespace) // Assuming 'default' namespace or making it a flag
 	},
 }
 
 func init() {
-	uninstallCmd.Flags().StringVarP(&uninstallNamespace, "namespace", "n", "", "Specify the namespace to install the Helm chart into")
+	uninstallCmd.Flags().StringVarP(&uninstallNamespace, "namespace", "n", "", "Specify the namespace to uninstall the Helm chart ")
 	selmCmd.AddCommand(uninstallCmd)
 }
