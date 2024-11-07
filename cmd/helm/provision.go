@@ -10,7 +10,7 @@ var provisionCmd = &cobra.Command{
 	Short: "Its the combination of install, upgrade, lint, template for Helm",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return helm.Provision(args[0], args[1], "default")
+		return helm.HelmProvision(args[0], args[1], "default")
 	},
 }
 

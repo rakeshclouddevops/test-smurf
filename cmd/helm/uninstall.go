@@ -13,10 +13,10 @@ var uninstallCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		releaseName := args[0]
-		if uninstallNamespace == "" { // If no namespace is provided, use default
+		if uninstallNamespace == "" { 
             uninstallNamespace = "default"
         }
-		return helm.HelmUninstall(releaseName, uninstallNamespace) // Assuming 'default' namespace or making it a flag
+		return helm.HelmUninstall(releaseName, uninstallNamespace) 
 	},
 }
 

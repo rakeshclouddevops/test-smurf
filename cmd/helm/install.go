@@ -5,7 +5,7 @@ import (
     "github.com/spf13/cobra"
 )
 
-var installNamespace string // This will hold the namespace value from the flag
+var installNamespace string 
 
 var installCmd = &cobra.Command{
     Use:   "install [RELEASE] [CHART]",
@@ -14,7 +14,7 @@ var installCmd = &cobra.Command{
     RunE: func(cmd *cobra.Command, args []string) error {
         releaseName := args[0]
         chartPath := args[1]
-        if installNamespace == "" { // If no namespace is provided, use default
+        if installNamespace == "" { 
             installNamespace = "default"
         }
         return helm.HelmInstall(releaseName, chartPath, installNamespace)
@@ -22,7 +22,6 @@ var installCmd = &cobra.Command{
 }
 
 func init() {
-    // Add the namespace flag
     installCmd.Flags().StringVarP(&installNamespace, "namespace", "n", "", "Specify the namespace to install the Helm chart")
     selmCmd.AddCommand(installCmd)
 }

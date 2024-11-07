@@ -14,7 +14,7 @@ var (
     atomic          bool
     timeout         time.Duration
     debug           bool
-    installIfNotPresent bool // New flag to determine whether to install if not present
+    installIfNotPresent bool 
 )
 
 var upgradeCmd = &cobra.Command{
@@ -25,19 +25,16 @@ var upgradeCmd = &cobra.Command{
         releaseName := args[0]
         chartPath := args[1]
         if installIfNotPresent {
-            // Check if release already exists
-            exists, err := helm.ReleaseExists(releaseName, namespace)
+            exists, err := helm.HelmReleaseExists(releaseName, namespace)
             if err != nil {
-                return err // handle error appropriately
+                return err 
             }
             if !exists {
-                // If not exists, perform installation
                 if err := helm.HelmInstall(releaseName, chartPath, namespace); err != nil {
                     return err
                 }
             }
         }
-        // Proceed with upgrade
         return helm.HelmUpgrade(releaseName, chartPath, namespace, setValues, valuesFiles, createNamespace, atomic, timeout, debug)
     },
 }

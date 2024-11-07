@@ -13,10 +13,10 @@ var statusCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		releaseName := args[0]
-		if statusNamespace == "" { // If no namespace is provided, use default
+		if statusNamespace == "" { 
             uninstallNamespace = "default"
         }
-		return helm.Status(releaseName, statusNamespace) 
+		return helm.HelmStatus(releaseName, statusNamespace) 
 	},
 }
 

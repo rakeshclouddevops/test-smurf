@@ -10,7 +10,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all Helm releases.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		releases, err := helm.HelmList("default") // Assuming 'default' namespace or make it a flag
+		releases, err := helm.HelmList("default") 
 		if err != nil {
 			return err
 		}

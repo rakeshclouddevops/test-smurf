@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// selmCmd represents the 'selm' command
+// selmCmd represents the 'selm' subcommand command
 var selmCmd = &cobra.Command{
 	Use:   "selm",
 	Short: "Subcommand for Helm-related actions",
@@ -18,6 +18,5 @@ var selmCmd = &cobra.Command{
 }
 
 func init() {
-	// Add the 'selm' command as a subcommand of RootCmd
 	cmd.RootCmd.AddCommand(selmCmd)
 }
