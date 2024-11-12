@@ -1,13 +1,15 @@
-# Smurf 
 
-Smurf is a command-line interface built with Cobra, designed to simplify and automate commands for essential tools like Terraform and Docker. It provides intuitive, unified commands to execute Terraform plans, Docker container management, and other DevOps tasks seamlessly from one interface. Whether you need to spin up environments, manage containers, or apply infrastructure as code, this CLI streamlines multi-tool operations, boosting productivity and reducing context-switching.
+# Smurf
+
+Smurf is a command-line interface built with Cobra, designed to streamline DevOps workflows by providing unified commands for essential tools like Terraform, Helm, and Docker. With Smurf, you can execute Terraform, Helm, and Docker commands seamlessly from a single interface. This CLI simplifies tasks such as environment provisioning, container management, and infrastructure-as-code deployment, improving productivity and minimizing context-switching.
 
 ## Features
 
-- **Terraform Command Wrapper:** Run `init`, `plan`, `apply`, `output` , `drift` commands and `provision` , which is a wrapper of init, drift, plan, apply, output.
-- **Git Integration:** (yet to come)
-- **Docker Integration:**(yet to come)
-- **Helm Integration:**(yet to come)
+- **Terraform Command Wrapper (stf):** Run `init`, `plan`, `apply`, `output`, `drift`, `validate`, `destroy`, `format` commands, and `provision`, a combined operation of `init`, `validate`, and `apply`.
+- **Helm Command Wrapper (selm):** Run `create`, `install`, `lint`, `list`, `status`, `template`, `upgrade`, `uninstall` commands, and `provision`, a combination of `install`, `upgrade`, `lint`, and `template`.
+- **Docker Command Wrapper (sdkr):** Run `build`, `scan`, `tag`, `publish`, `push` commands, and `provision`, a combination of `build`, `scan`, and `publish`.
+- **Git Integration:** *(Yet to come)*
+- **Unified CLI Interface:** Manage multi-tool operations from one interface, reducing the need for multiple command sets.
 
 ## Installation
 
@@ -15,9 +17,9 @@ Smurf is a command-line interface built with Cobra, designed to simplify and aut
 
 - Go 1.20 or higher
 - Git
-- Terraform installed and available in your PATH
+- Terraform, Helm, and Docker Daemon installed and accessible via your PATH
 
-### Steps
+### Installation Steps
 
 1. **Clone the repository:**
 
@@ -31,60 +33,55 @@ Smurf is a command-line interface built with Cobra, designed to simplify and aut
    cd smurf
    ```
 
-3. **Build and install the tool:**
+3. **Build the tool:**
 
    ```bash
-   go build .
+   go build -o smurf .
    ```
 
-   This will build `smurf` to your project directory.
+   This will build `smurf` in your project directory.
 
 ## Usage
 
-Navigate to your Terraform project directory and use `smurf` commands as follows:
+### Terraform Commands
 
-### Initialize Terraform
+Use `smurf stf <command>` to run Terraform commands. Supported commands include:
 
-```bash
-./smurf init
-```
+- **Initialize Terraform:** `smurf stf init`
+- **Generate and Show Execution Plan:** `smurf stf plan`
+- **Apply Terraform Changes:** `smurf stf apply`
+- **Detect Drift in Terraform State:** `smurf stf drift`
+- **Provision Terraform Environment:** `smurf stf provision`
 
-This initializes your Terraform working directory.
+The `provision` command for Terraform performs `init`, `validate`, and `apply`.
 
-### Generate and Show an Execution Plan for Terraform
+### Helm Commands
 
-```bash
-./smurf plan
-```
+Use `smurf selm <command>` to run Helm commands. Supported commands include:
 
-Generates an execution plan and shows what actions Terraform will take.
+- **Create a Helm Chart:** `smurf selm create`
+- **Install a Chart:** `smurf selm install`
+- **Upgrade a Release:** `smurf selm upgrade`
+- **Provision Helm Environment:** `smurf selm provision`
 
-### Apply Terraform Changes
+The `provision` command for Helm combines `install`, `upgrade`, `lint`, and `template`.
 
-```bash
-./smurf apply
-```
+### Docker Commands
 
-Applies the changes required to reach the desired state of the configuration.
+Use `smurf sdkr <command> <flags>` to run Docker commands. Supported commands include:
 
-### Detect Drift in Terraform State
+- **Build an Image:** `smurf sdkr build`
+- **Scan an Image:** `smurf sdkr scan`
+- **Push an Image:** `smurf sdkr push`
+- **Provision Docker Environment:** `smurf sdkr provision [flags]`
 
-```bash
-./smurf drift
-```
+The `provision` command for Docker combines `build`, `scan`, and `publish`.
 
-Detects any drift between your Terraform state and the actual infrastructure.
-
-## Important Notes
-
-- **Uncommitted Changes:** `smurf` will check for uncommitted changes in your `.tf` files. If any are detected, it will prompt you to commit or discard them before proceeding. This ensures that only committed changes are applied, maintaining consistency and traceability.
-
-- **Git Integration:** Make sure your project is initialized as a Git repository (`git init`) and that your `.tf` files are tracked.
 
 ## Contributing
 
-Contributions are welcome! Please open issues or pull requests on the [GitHub repository](https://github.com/clouddrove/smurf).
+Contributions are welcome! Open issues or pull requests on the [GitHub repository](https://github.com/clouddrove/smurf).
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License - see the [LICENSE](LICENSE) file for details.
