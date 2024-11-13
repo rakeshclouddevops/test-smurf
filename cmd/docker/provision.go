@@ -21,6 +21,7 @@ var (
 	provisionSarifFile      string
 	provisionTargetTag      string
 	provisionConfirmPush    bool
+	provisionDeleteAfterPush bool
 )
 
 var provisionCmd = &cobra.Command{
@@ -124,6 +125,15 @@ var provisionCmd = &cobra.Command{
 			}
 		}
 
+		if provisionDeleteAfterPush {
+			pterm.Info.Printf("Deleting local image %s...\n", fullImageName)
+			if err := docker.RemoveImage(fullImageName); err != nil {
+				pterm.Error.Println("Failed to delete local image:", err)
+				return err
+			}
+			pterm.Success.Println("Successfully deleted local image:", fullImageName)
+		}
+
 		pterm.Success.Println("Provisioning completed successfully.")
 		return nil
 	},
@@ -139,6 +149,7 @@ func init() {
 	provisionCmd.Flags().StringVarP(&provisionSarifFile, "output", "o", "", "Output file for SARIF report")
 	provisionCmd.Flags().StringVar(&provisionTargetTag, "target-tag", "", "Target tag for tagging the image")
 	provisionCmd.Flags().BoolVarP(&provisionConfirmPush, "yes", "y", false, "Push the image without confirmation")
+	provisionCmd.Flags().BoolVarP(&provisionDeleteAfterPush, "delete", "d", false, "Delete the local image after pushing")
 
 	provisionCmd.MarkFlagRequired("image-name")
 
