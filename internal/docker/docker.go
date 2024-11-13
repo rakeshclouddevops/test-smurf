@@ -126,7 +126,7 @@ func Build(imageName, tag string, opts BuildOptions) error {
 // TagOptions struct to hold options for tagging a Docker image
 type TagOptions struct {
 	Source string
-	Target string 
+	Target string
 }
 
 // TagImage tags a local Docker image for use in a remote repository.
@@ -152,7 +152,7 @@ func TagImage(opts TagOptions) error {
 
 // PushOptions struct to hold options for pushing a Docker image
 type PushOptions struct {
-	ImageName string 
+	ImageName string
 }
 
 // PushImage pushes a Docker image to a Docker registry.
@@ -212,13 +212,13 @@ func handleDockerResponse(responseBody io.ReadCloser, spinner *pterm.SpinnerPrin
 			if current > lastProgress {
 				progressMessage := fmt.Sprintf("Pushing image %s... %d%%", opts.ImageName, current)
 				spinner.UpdateText(progressMessage)
-				fmt.Printf("\r%s", pterm.Green(progressMessage)) 
+				fmt.Printf("\r%s", pterm.Green(progressMessage))
 				lastProgress = current
 			}
 		}
 
 		if msg.Stream != "" {
-			fmt.Print(pterm.Blue(msg.Stream)) 
+			fmt.Print(pterm.Blue(msg.Stream))
 		}
 	}
 
@@ -275,5 +275,26 @@ func Scout(dockerTag, sarifFile string) error {
 	}
 
 	pterm.Success.Println("Scan completed successfully.")
+	return nil
+}
+
+// RemoveImage removes a Docker image based on the provided flags.
+func RemoveImage(imageTag string) error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create Docker client: %w", err)
+	}
+
+	pterm.Info.Println("Removing local Docker image:", imageTag)
+	spinner, _ := pterm.DefaultSpinner.Start("Removing image...")
+
+	_, err = cli.ImageRemove(ctx, imageTag, image.RemoveOptions{Force: true})
+	if err != nil {
+		spinner.Fail("Failed to remove local Docker image:", imageTag)
+		return fmt.Errorf("failed to remove local Docker image: %w", err)
+	}
+
+	spinner.Success("Successfully removed local Docker image:", imageTag)
 	return nil
 }
