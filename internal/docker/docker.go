@@ -11,7 +11,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerregistry/armcontainerregistry"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ecr"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
@@ -20,6 +27,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/moby/term"
 	"github.com/pterm/pterm"
+	"golang.org/x/oauth2/google"
 )
 
 // BuildOptions struct to hold options for Docker build
@@ -297,4 +305,359 @@ func RemoveImage(imageTag string) error {
 
 	spinner.Success("Successfully removed local Docker image:", imageTag)
 	return nil
+}
+
+func PushImageToECR(imageName, region, repositoryName string) error {
+	sess, err := session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	})
+	if err != nil {
+		pterm.Error.Println(fmt.Errorf("failed to create AWS session: %w", err))
+		return err
+	}
+
+	ecrClient := ecr.New(sess)
+
+	describeRepositoriesInput := &ecr.DescribeRepositoriesInput{
+		RepositoryNames: []*string{
+			aws.String(repositoryName),
+		},
+	}
+	_, err = ecrClient.DescribeRepositories(describeRepositoriesInput)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == ecr.ErrCodeRepositoryNotFoundException {
+			createRepositoryInput := &ecr.CreateRepositoryInput{
+				RepositoryName: aws.String(repositoryName),
+			}
+			_, err = ecrClient.CreateRepository(createRepositoryInput)
+			if err != nil {
+				pterm.Error.Println(fmt.Errorf("failed to create ECR repository: %w", err))
+				return err
+			}
+			pterm.Info.Println("Created ECR repository:", repositoryName)
+		} else {
+			pterm.Error.Println(fmt.Errorf("failed to describe ECR repositories: %w", err))
+			return err
+		}
+	}
+
+	authTokenOutput, err := ecrClient.GetAuthorizationToken(&ecr.GetAuthorizationTokenInput{})
+	if err != nil {
+		pterm.Error.Println(fmt.Errorf("failed to get ECR authorization token: %w", err))
+		return err
+	}
+
+	if len(authTokenOutput.AuthorizationData) == 0 {
+		pterm.Error.Println("No authorization data received from ECR")
+		return fmt.Errorf("no authorization data received from ECR")
+	}
+
+	authData := authTokenOutput.AuthorizationData[0]
+	authToken, err := base64.StdEncoding.DecodeString(*authData.AuthorizationToken)
+	if err != nil {
+		pterm.Error.Println(fmt.Errorf("failed to decode authorization token: %w", err))
+		return err
+	}
+
+	credentials := strings.SplitN(string(authToken), ":", 2)
+	if len(credentials) != 2 {
+		pterm.Error.Println("Invalid authorization token format")
+		return fmt.Errorf("invalid authorization token format")
+	}
+
+	ecrURL := strings.TrimPrefix(*authData.ProxyEndpoint, "https://")
+
+	pterm.Info.Println("Initializing Docker client...")
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		pterm.Error.Println(fmt.Errorf("failed to create Docker client: %w", err))
+		return err
+	}
+
+	authConfig := registry.AuthConfig{
+		Username:      credentials[0],
+		Password:      credentials[1],
+		ServerAddress: *authData.ProxyEndpoint,
+	}
+
+	pterm.Info.Println("Authenticating Docker client to ECR...")
+
+	encodedJSON, err := json.Marshal(authConfig)
+	if err != nil {
+		pterm.Error.Println(fmt.Errorf("failed to encode auth config: %w", err))
+		return err
+	}
+	authStr := base64.URLEncoding.EncodeToString(encodedJSON)
+
+	ecrImage := fmt.Sprintf("%s/%s", ecrURL, repositoryName)
+	pterm.Info.Println("Tagging image for ECR...")
+	if err := cli.ImageTag(context.Background(), imageName, ecrImage); err != nil {
+		pterm.Error.Println(fmt.Errorf("failed to tag image: %w", err))
+		return err
+	}
+
+	pterm.Info.Println("Pushing image to ECR...")
+	pushResponse, err := cli.ImagePush(context.Background(), ecrImage, image.PushOptions{
+		RegistryAuth: authStr,
+	})
+	if err != nil {
+		pterm.Error.Println(fmt.Errorf("failed to push image to ECR: %w", err))
+		return err
+	}
+	defer pushResponse.Close()
+
+	decoder := json.NewDecoder(pushResponse)
+	for {
+		var message map[string]interface{}
+		if err := decoder.Decode(&message); err != nil {
+			if err == io.EOF {
+				break
+			}
+			pterm.Error.Println(fmt.Errorf("error decoding JSON message from push: %w", err))
+			return err
+		}
+
+		if status, ok := message["status"].(string); ok {
+			if status != "Waiting" { 
+				pterm.Info.Println(status) 
+			}
+		}
+		if errorDetail, ok := message["errorDetail"].(map[string]interface{}); ok {
+			pterm.Error.Println(fmt.Errorf("error pushing image: %v", errorDetail["message"]))
+			return fmt.Errorf("error pushing image: %v", errorDetail["message"])
+		}
+	}
+
+	fmt.Println()
+	pterm.Success.Println("Image successfully pushed to ECR:", ecrImage)
+	return nil
+}
+
+func PushImageToACR(subscriptionID, resourceGroupName, registryName, imageName string) error {
+	ctx := context.Background()
+
+	spinner, _ := pterm.DefaultSpinner.Start("Authenticating with Azure...")
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		spinner.Fail("Failed to authenticate with Azure")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	spinner.Success("Authenticated with Azure")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Creating registry client...")
+	registryClient, err := armcontainerregistry.NewRegistriesClient(subscriptionID, cred, nil)
+	if err != nil {
+		spinner.Fail("Failed to create registry client")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	spinner.Success("Registry client created")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Retrieving registry details...")
+	registryResp, err := registryClient.Get(ctx, resourceGroupName, registryName, nil)
+	if err != nil {
+		spinner.Fail("Failed to retrieve registry details")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	loginServer := *registryResp.Properties.LoginServer
+	spinner.Success("Registry details retrieved")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Retrieving registry credentials...")
+	credentialsResp, err := registryClient.ListCredentials(ctx, resourceGroupName, registryName, nil)
+	if err != nil {
+		spinner.Fail("Failed to retrieve registry credentials")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	if credentialsResp.Username == nil || len(credentialsResp.Passwords) == 0 || credentialsResp.Passwords[0].Value == nil {
+		spinner.Fail("Registry credentials are not available")
+		color.New(color.FgRed).Println("Error: Registry credentials are not available")
+		return fmt.Errorf("registry credentials are not available")
+	}
+	username := *credentialsResp.Username
+	password := *credentialsResp.Passwords[0].Value
+	spinner.Success("Registry credentials retrieved")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Creating Docker client...")
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		spinner.Fail("Failed to create Docker client")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	spinner.Success("Docker client created")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Tagging the image...")
+	taggedImage := fmt.Sprintf("%s/%s", loginServer, imageName)
+	err = dockerClient.ImageTag(ctx, imageName, taggedImage)
+	if err != nil {
+		spinner.Fail("Failed to tag the image")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	spinner.Success("Image tagged")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Pushing the image to ACR...")
+	authConfig := registry.AuthConfig{
+		Username:      username,
+		Password:      password,
+		ServerAddress: loginServer,
+	}
+	encodedAuth, err := encodeAuthToBase64(authConfig)
+	if err != nil {
+		spinner.Fail("Failed to encode authentication credentials")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+
+	pushOptions := image.PushOptions{
+		RegistryAuth: encodedAuth,
+	}
+
+	pushResponse, err := dockerClient.ImagePush(ctx, taggedImage, pushOptions)
+	if err != nil {
+		spinner.Fail("Failed to push the image")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	defer pushResponse.Close()
+
+	dec := json.NewDecoder(pushResponse)
+	for {
+		var event jsonmessage.JSONMessage
+		if err := dec.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			spinner.Fail("Failed to read push response")
+			color.New(color.FgRed).Printf("Error: %v\n", err)
+			return err
+		}
+		if event.Error != nil {
+			spinner.Fail("Failed to push the image")
+			color.New(color.FgRed).Printf("Error: %v\n", event.Error)
+			return event.Error
+		}
+		if event.Status != "" {
+			spinner.UpdateText(event.Status)
+		}
+	}
+	spinner.Success("Image pushed to ACR")
+
+	color.New(color.FgGreen).Printf("Successfully pushed image '%s' to ACR '%s'\n", imageName, registryName)
+	return nil
+}
+
+func PushImageToGCR(projectID, imageName string) error {
+	ctx := context.Background()
+
+	spinner, _ := pterm.DefaultSpinner.Start("Authenticating with Google Cloud...")
+	creds, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/cloud-platform")
+	if err != nil {
+		spinner.Fail("Failed to authenticate with Google Cloud")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	spinner.Success("Authenticated with Google Cloud")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Obtaining access token...")
+	tokenSource := creds.TokenSource
+	token, err := tokenSource.Token()
+	if err != nil {
+		spinner.Fail("Failed to obtain access token")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	spinner.Success("Access token obtained")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Creating Docker client...")
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		spinner.Fail("Failed to create Docker client")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	spinner.Success("Docker client created")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Tagging the image...")
+	var registryHost string
+	if strings.Contains(imageName, "gcr.io") {
+		registryHost = "gcr.io"
+	} else {
+		registryHost = fmt.Sprintf("gcr.io/%s", projectID)
+	}
+	taggedImage := fmt.Sprintf("%s/%s", registryHost, imageName)
+	err = dockerClient.ImageTag(ctx, imageName, taggedImage)
+	if err != nil {
+		spinner.Fail("Failed to tag the image")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	spinner.Success("Image tagged")
+
+	spinner, _ = pterm.DefaultSpinner.Start("Pushing the image to GCR...")
+	authConfig := registry.AuthConfig{
+		Username:      "oauth2accesstoken",
+		Password:      token.AccessToken,
+		ServerAddress: "https://gcr.io",
+	}
+	encodedAuth, err := encodeAuthToBase64(authConfig)
+	if err != nil {
+		spinner.Fail("Failed to encode authentication credentials")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+
+	pushOptions := image.PushOptions{
+		RegistryAuth: encodedAuth,
+	}
+
+	pushResponse, err := dockerClient.ImagePush(ctx, taggedImage, pushOptions)
+	if err != nil {
+		spinner.Fail("Failed to push the image")
+		color.New(color.FgRed).Printf("Error: %v\n", err)
+		return err
+	}
+	defer pushResponse.Close()
+
+	dec := json.NewDecoder(pushResponse)
+	progressBar, _ := pterm.DefaultProgressbar.WithTotal(100).WithTitle("Pushing to GCR").Start()
+	for {
+		var event jsonmessage.JSONMessage
+		if err := dec.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			spinner.Fail("Failed to read push response")
+			color.New(color.FgRed).Printf("Error: %v\n", err)
+			return err
+		}
+		if event.Error != nil {
+			spinner.Fail("Failed to push the image")
+			color.New(color.FgRed).Printf("Error: %v\n", event.Error)
+			return event.Error
+		}
+		if event.Progress != nil && event.Progress.Total > 0 {
+			progress := int(float64(event.Progress.Current) / float64(event.Progress.Total) * 100)
+			if progress > 100 {
+				progress = 100
+			}
+			progressBar.Add(progress - progressBar.Current)
+		}
+	}
+	progressBar.Stop()
+	spinner.Success("Image pushed to GCR")
+
+	color.New(color.FgGreen).Printf("Successfully pushed image '%s' to GCR\n", taggedImage)
+	return nil
+}
+
+func encodeAuthToBase64(authConfig registry.AuthConfig) (string, error) {
+	authJSON, err := json.Marshal(authConfig)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(authJSON), nil
 }
