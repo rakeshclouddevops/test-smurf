@@ -19,13 +19,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/api/types"
 	"github.com/fatih/color"
-	"github.com/moby/term"
 	"github.com/pterm/pterm"
 	"golang.org/x/oauth2/google"
 )
@@ -36,7 +35,7 @@ type BuildOptions struct {
 	NoCache        bool
 	BuildArgs      map[string]string
 	Target         string
-	Platform string
+	Platform       string
 }
 
 // createTarArchive creates a tar archive of the entire build context directory.
@@ -49,6 +48,11 @@ func createTarArchive(contextDir string) (io.Reader, error) {
 		if err != nil {
 			return err
 		}
+
+		if fi.IsDir() || strings.HasPrefix(fi.Name(), ".") {
+			return nil
+		}
+
 		header, err := tar.FileInfoHeader(fi, file)
 		if err != nil {
 			return err
@@ -59,16 +63,16 @@ func createTarArchive(contextDir string) (io.Reader, error) {
 			return err
 		}
 
-		if !fi.Mode().IsDir() {
-			data, err := os.Open(file)
-			if err != nil {
-				return err
-			}
-			defer data.Close()
-			if _, err := io.Copy(tw, data); err != nil {
-				return err
-			}
+		data, err := os.Open(file)
+		if err != nil {
+			return err
 		}
+		defer data.Close()
+
+		if _, err := io.Copy(tw, data); err != nil {
+			return err
+		}
+
 		return nil
 	})
 
@@ -84,27 +88,32 @@ func createTarArchive(contextDir string) (io.Reader, error) {
 }
 
 func convertToInterfaceMap(args map[string]string) map[string]*string {
-    result := make(map[string]*string)
-    for key, value := range args {
-        v := value
-        result[key] = &v
-    }
-    return result
+	result := make(map[string]*string)
+	for key, value := range args {
+		v := value
+		result[key] = &v
+	}
+	return result
 }
 
 // Build builds a Docker image from a specified Dockerfile.
 func Build(imageName, tag string, opts BuildOptions) error {
 	ctx := context.Background()
+
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
+	fmt.Println("Docker client created successfully")
 
 	contextDir := filepath.Dir(opts.DockerfilePath)
+	fmt.Println("Context Directory: ", contextDir)
+
 	tarStream, err := createTarArchive(contextDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create tar archive from context directory: %w", err)
 	}
+	fmt.Println("Tar archive created successfully")
 
 	options := types.ImageBuildOptions{
 		Tags:        []string{fmt.Sprintf("%s:%s", imageName, tag)},
@@ -115,25 +124,24 @@ func Build(imageName, tag string, opts BuildOptions) error {
 		Remove:      true,
 		ForceRemove: true,
 		PullParent:  true,
-		Platform: opts.Platform,
+		Platform:    opts.Platform,
 	}
+
 
 	spinner, _ := pterm.DefaultSpinner.Start("Building Docker image...")
 	buildResponse, err := cli.ImageBuild(ctx, tarStream, options)
 	if err != nil {
 		spinner.Fail("Failed to start the build process")
-		color.New(color.FgRed).Println(err)
-		return err
+		return fmt.Errorf("failed to start image build (context: %s, Dockerfile: %s): %w", contextDir, opts.DockerfilePath, err)
 	}
 
+	io.Copy(os.Stdout, buildResponse.Body)
 	defer buildResponse.Body.Close()
 
-	termFd, isTerm := term.GetFdInfo(os.Stderr)
-	err = jsonmessage.DisplayJSONMessagesStream(buildResponse.Body, os.Stdout, termFd, isTerm, nil)
+	err = jsonmessage.DisplayJSONMessagesStream(buildResponse.Body, os.Stdout, os.Stderr.Fd(), true, nil)
 	if err != nil {
 		spinner.Fail("Failed during the build process")
-		color.New(color.FgRed).Println(err)
-		return err
+		return fmt.Errorf("error during build process: %w", err)
 	}
 
 	spinner.Success("Docker image built successfully")
@@ -429,8 +437,8 @@ func PushImageToECR(imageName, region, repositoryName string) error {
 		}
 
 		if status, ok := message["status"].(string); ok {
-			if status != "Waiting" { 
-				pterm.Info.Println(status) 
+			if status != "Waiting" {
+				pterm.Info.Println(status)
 			}
 		}
 		if errorDetail, ok := message["errorDetail"].(map[string]interface{}); ok {
