@@ -1,17 +1,18 @@
 package docker
 
 import (
+	"strings"
+
 	"github.com/clouddrove/smurf/internal/docker"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
-// Additional flags for the build command
 var (
 	dockerfilePath string
 	noCache        bool
 	buildArgs      []string
 	target         string
+	platform       string 
 )
 
 var buildCmd = &cobra.Command{
@@ -19,12 +20,11 @@ var buildCmd = &cobra.Command{
 	Short: "Build a Docker image with the given name and tag.",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Parsing build-args into a map
-		buildArgsMap := make(map[string]*string)
+		buildArgsMap := make(map[string]string)
 		for _, arg := range buildArgs {
 			parts := strings.SplitN(arg, "=", 2)
 			if len(parts) == 2 {
-				buildArgsMap[parts[0]] = &parts[1]
+				buildArgsMap[parts[0]] = parts[1]
 			}
 		}
 
@@ -33,6 +33,7 @@ var buildCmd = &cobra.Command{
 			NoCache:        noCache,
 			BuildArgs:      buildArgsMap,
 			Target:         target,
+			Platform:       platform, 
 		}
 
 		return docker.Build(args[0], args[1], opts)
@@ -44,6 +45,7 @@ func init() {
 	buildCmd.Flags().BoolVar(&noCache, "no-cache", false, "Do not use cache when building the image")
 	buildCmd.Flags().StringArrayVar(&buildArgs, "build-arg", []string{}, "Set build-time variables")
 	buildCmd.Flags().StringVar(&target, "target", "", "Set the target build stage to build")
+	buildCmd.Flags().StringVar(&platform, "platform", "", "Set the platform for the build (e.g., linux/amd64, linux/arm64)")
 
 	sdkrCmd.AddCommand(buildCmd)
 }
