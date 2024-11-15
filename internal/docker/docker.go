@@ -86,8 +86,6 @@ func createTarArchive(contextDir string) (io.Reader, error) {
 func convertToInterfaceMap(args map[string]string) map[string]*string {
     result := make(map[string]*string)
     for key, value := range args {
-        // Take the address of the loop variable 'value'.
-        // It's crucial to create a new variable here inside the loop to avoid all pointers pointing to the same address.
         v := value
         result[key] = &v
     }
