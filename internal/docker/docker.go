@@ -34,8 +34,9 @@ import (
 type BuildOptions struct {
 	DockerfilePath string
 	NoCache        bool
-	BuildArgs      map[string]*string
+	BuildArgs      map[string]string
 	Target         string
+	Platform string
 }
 
 // createTarArchive creates a tar archive of the entire build context directory.
@@ -82,6 +83,17 @@ func createTarArchive(contextDir string) (io.Reader, error) {
 	return buf, nil
 }
 
+func convertToInterfaceMap(args map[string]string) map[string]*string {
+    result := make(map[string]*string)
+    for key, value := range args {
+        // Take the address of the loop variable 'value'.
+        // It's crucial to create a new variable here inside the loop to avoid all pointers pointing to the same address.
+        v := value
+        result[key] = &v
+    }
+    return result
+}
+
 // Build builds a Docker image from a specified Dockerfile.
 func Build(imageName, tag string, opts BuildOptions) error {
 	ctx := context.Background()
@@ -100,11 +112,12 @@ func Build(imageName, tag string, opts BuildOptions) error {
 		Tags:        []string{fmt.Sprintf("%s:%s", imageName, tag)},
 		Dockerfile:  filepath.Base(opts.DockerfilePath),
 		NoCache:     opts.NoCache,
-		BuildArgs:   opts.BuildArgs,
+		BuildArgs:   convertToInterfaceMap(opts.BuildArgs),
 		Target:      opts.Target,
 		Remove:      true,
 		ForceRemove: true,
 		PullParent:  true,
+		Platform: opts.Platform,
 	}
 
 	spinner, _ := pterm.DefaultSpinner.Start("Building Docker image...")
