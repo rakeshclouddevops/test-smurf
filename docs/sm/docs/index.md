@@ -33,7 +33,7 @@
 </a>
 </p>
 
-Smurf is a command-line interface built with Cobra, designed to streamline DevOps workflows by providing unified commands for essential tools like Terraform, Helm, and Docker. With Smurf, you can execute Terraform, Helm, and Docker commands seamlessly from a single interface. This CLI simplifies tasks such as environment provisioning, container management, and infrastructure-as-code deployment, improving productivity and minimizing context-switching.
+Smurf is a command-line interface built with Cobra, designed to simplify and automate commands for essential tools like Terraform and Docker. It provides intuitive, unified commands to execute Terraform plans, Docker container management, and other DevOps tasks seamlessly from one interface. Whether you need to spin up environments, manage containers, or apply infrastructure as code, this CLI streamlines multi-tool operations, boosting productivity and reducing context-switching.
 ## Features
 
 - **Terraform Command Wrapper (stf):** Run `init`, `plan`, `apply`, `output`, `drift`, `validate`, `destroy`, `format` commands, and `provision`, a combined operation of `init`, `validate`, and `apply`.
