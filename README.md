@@ -8,6 +8,7 @@ Smurf is a command-line interface built with Cobra, designed to streamline DevOp
 - **Terraform Command Wrapper (stf):** Run `init`, `plan`, `apply`, `output`, `drift`, `validate`, `destroy`, `format` commands, and `provision`, a combined operation of `init`, `validate`, and `apply`.
 - **Helm Command Wrapper (selm):** Run `create`, `install`, `lint`, `list`, `status`, `template`, `upgrade`, `uninstall` commands, and `provision`, a combination of `install`, `upgrade`, `lint`, and `template`.
 - **Docker Command Wrapper (sdkr):** Run `build`, `scan`, `tag`, `publish`, `push` commands, and `provision`, a combination of `build`, `scan`, and `publish`.
+- **Multicloud Container registry :** Push images from multiple cloud registries like AWS ECR, GCP GCR, Azure ACR, and Docker Hub.Run `smurf sdkr push --help` to push images from the specified registry.
 - **Git Integration:** *(Yet to come)*
 - **Unified CLI Interface:** Manage multi-tool operations from one interface, reducing the need for multiple command sets.
 
@@ -47,6 +48,7 @@ Smurf is a command-line interface built with Cobra, designed to streamline DevOp
 
 Use `smurf stf <command>` to run Terraform commands. Supported commands include:
 
+- **Help:** `smurf stf --help`
 - **Initialize Terraform:** `smurf stf init`
 - **Generate and Show Execution Plan:** `smurf stf plan`
 - **Apply Terraform Changes:** `smurf stf apply`
@@ -59,10 +61,11 @@ The `provision` command for Terraform performs `init`, `validate`, and `apply`.
 
 Use `smurf selm <command>` to run Helm commands. Supported commands include:
 
+- **Help:** `smurf selm --help`
 - **Create a Helm Chart:** `smurf selm create`
 - **Install a Chart:** `smurf selm install`
 - **Upgrade a Release:** `smurf selm upgrade`
-- **Provision Helm Environment:** `smurf selm provision`
+- **Provision Helm Environment:** `smurf selm provision --help`
 
 The `provision` command for Helm combines `install`, `upgrade`, `lint`, and `template`.
 
@@ -70,12 +73,16 @@ The `provision` command for Helm combines `install`, `upgrade`, `lint`, and `tem
 
 Use `smurf sdkr <command> <flags>` to run Docker commands. Supported commands include:
 
+- **Help:** `smurf sdkr --help`
 - **Build an Image:** `smurf sdkr build`
 - **Scan an Image:** `smurf sdkr scan`
-- **Push an Image:** `smurf sdkr push`
-- **Provision Docker Environment:** `smurf sdkr provision [flags]`
+- **Push an Image:** `smurf sdkr push --help`
+- **Provision Registry Environment:** `smurf sdkr provision-hub [flags] `(for Docker Hub)
 
-The `provision` command for Docker combines `build`, `scan`, and `publish`.
+The `provision-hub` command for Docker combines `build`, `scan`, and `publish`.
+The `provision-ecr` command for Docker combines `build`, `scan`, and `publish` for AWS ECR.
+THE `provision-gcr` command for Docker combines `build`, `scan`, and `publish` for GCP GCR.
+THE `provision-acr` command for Docker combines `build`, `scan`, and `publish` for Azure ACR.
 
 
 ## Contributing
