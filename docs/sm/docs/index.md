@@ -1,7 +1,5 @@
+# 
 ![Banner](https://github.com/clouddrove/terraform-module-template/assets/119565952/67a8a1af-2eb7-40b7-ae07-c94cde9ce062)
-<h1 align="center">
-    Smurf
-</h1>
 
 <p align="center">
     <a href="https://goreportcard.com/report/github.com/clouddrove/smurf">
@@ -11,15 +9,13 @@
         <img alt="Build Status" src="https://img.shields.io/badge/test-passing-green">
     </a>
     <a href="https://join.slack.com/t/devops-talks/shared_invite/zt-2s2rnal1e-bRStDKSyRC~dpXA~PaJ7vQ">
-        <img alt="Slack Chat" src="https://img.shields.io/badge/join%20slack-click%20here-blue">
+        <img alt="Slack Chat" src="https://img.shields.io/badge/join%20slack-blue">
     </a>
-    <a href="https://medium.com/devops-talks/announcing-devopstalks-spectacular-hacktoberfest-2024-363a09223c45">
-        <img alt="Blog" src="https://img.shields.io/badge/hacktoberfest2024%20blog-8A2BE2">
-    </a>
-	<a href="https://choosealicense.com/licenses/mit/">
-		<img alt="Apache-2.0 License" src="http://img.shields.io/badge/license-MIT-brightgreen.svg">
+	<a href="http://www.apache.org/licenses/LICENSE-2.0">
+		<img alt="Apache-2.0 License" src="https://img.shields.io/badge/apache-2-0.svg">
 	</a>
 </p>
+
 
 <p align="center">
 <a href='https://facebook.com/sharer/sharer.php?u=https://github.com/clouddrove/smurf'>
@@ -118,7 +114,7 @@ THE `provision-acr` command for Docker combines `build`, `scan`, and `publish` f
 
 
 
-## ✨ Contributors
+## Contributors ✨ 
 
 Big thanks to our contributors for elevating our project with their dedication and expertise! But, we do not wish to stop there, would like to invite contributions from the community in improving these projects and making them more versatile for better reach. Remember, every bit of contribution is immensely valuable, as, together, we are moving in only 1 direction, i.e. forward.
 
@@ -158,9 +154,7 @@ Join our vibrant Open Source Slack Community and embark on a learning journey wi
 
 Join our tech elites [Join Now][slack] 🚀
 
-## Explore Our Blogs
 
-Click [here][blog] :books: :star2:
 
 ## Tap into our capabilities
 We provide a platform for organizations to engage with experienced top-tier DevOps & Cloud services. Tap into our pool of certified engineers and architects to elevate your DevOps and Cloud Solutions.
