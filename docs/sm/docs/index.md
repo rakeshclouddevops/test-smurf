@@ -1,5 +1,8 @@
 # 
 ![Banner](https://github.com/clouddrove/terraform-module-template/assets/119565952/67a8a1af-2eb7-40b7-ae07-c94cde9ce062)
+<h1 align="center">
+    Smurf
+</h1>
 
 <p align="center">
     <a href="https://goreportcard.com/report/github.com/clouddrove/smurf">
