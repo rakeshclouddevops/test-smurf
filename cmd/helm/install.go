@@ -19,6 +19,10 @@ var installCmd = &cobra.Command{
         }
         return helm.HelmInstall(releaseName, chartPath, installNamespace)
     },
+    Example: `
+    smurf selm install my-release ./mychart
+    smurf selm install my-release ./mychart -n my-namespace
+    `,
 }
 
 func init() {

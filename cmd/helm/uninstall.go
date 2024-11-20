@@ -18,6 +18,10 @@ var uninstallCmd = &cobra.Command{
         }
 		return helm.HelmUninstall(releaseName, uninstallNamespace) 
 	},
+	Example: `
+	smurf selm uninstall my-release
+	smurf selm uninstall my-release -n my-namespace
+	`,
 }
 
 func init() {
