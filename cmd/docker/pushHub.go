@@ -15,6 +15,11 @@ var (
 var pushHubCmd = &cobra.Command{
 	Use:   "hub",
 	Short: "push Docker images to Docker Hub",
+	Long: `
+	Push Docker images to Docker Hub
+	export DOCKER_USERNAME=<username>
+	export DOCKER_PASSWORD=<password>
+	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		opts := docker.PushOptions{
 			ImageName: hubImageName,
