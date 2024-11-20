@@ -14,7 +14,7 @@ var templateCmd = &cobra.Command{
         return helm.HelmTemplate(args[0], args[1], "default")
     },
     Example: `
-    smurf helm template my-release ./mychart
+    smurf selm template my-release ./mychart
     `,
 }
 

@@ -19,8 +19,8 @@ var statusCmd = &cobra.Command{
 		return helm.HelmStatus(releaseName, statusNamespace) 
 	},
 	Example: `
-	smurf helm status my-release
-	smurf helm status my-release -n my-namespace
+	smurf selm status my-release
+	smurf selm status my-release -n my-namespace
 	`,
 }
 

@@ -20,7 +20,7 @@ var listCmd = &cobra.Command{
 		return nil
 	},
 	Example: `
-	smurf helm list
+	smurf selm list
 	`,
 }
 

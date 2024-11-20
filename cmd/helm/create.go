@@ -13,7 +13,7 @@ var createChartCmd = &cobra.Command{
 		return helm.CreateChart(args[0], args[1])
 	},
 	Example: `
-	smurf helm create mychart ./mychart
+	smurf selm create mychart ./mychart
 	`,
 }
 

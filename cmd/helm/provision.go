@@ -13,7 +13,7 @@ var provisionCmd = &cobra.Command{
 		return helm.HelmProvision(args[0], args[1], "default")
 	},
 	Example: `
-	smurf helm provision my-release ./mychart
+	smurf selm provision my-release ./mychart
 	`,
 }
 

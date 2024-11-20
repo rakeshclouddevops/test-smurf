@@ -38,10 +38,10 @@ var upgradeCmd = &cobra.Command{
         return helm.HelmUpgrade(releaseName, chartPath, namespace, setValues, valuesFiles, createNamespace, atomic, timeout, debug)
     },
     Example: `
-    smurf helm upgrade my-release ./mychart
-    smurf helm upgrade my-release ./mychart -n my-namespace
-    smurf helm upgrade my-release ./mychart --set key1=val1,key2=val2
-    smurf helm upgrade my-release ./mychart -f values.yaml --timeout 600s --atomic --debug --install
+    smurf selm upgrade my-release ./mychart
+    smurf selm upgrade my-release ./mychart -n my-namespace
+    smurf selm upgrade my-release ./mychart --set key1=val1,key2=val2
+    smurf selm upgrade my-release ./mychart -f values.yaml --timeout 600s --atomic --debug --install
     `,
 }
 

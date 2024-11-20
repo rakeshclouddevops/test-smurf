@@ -14,7 +14,7 @@ var lintCmd = &cobra.Command{
 		return helm.HelmLint(chartPath)
 	},
 	Example: `
-	smurf helm lint ./mychart
+	smurf selm lint ./mychart
 	`,
 }
 

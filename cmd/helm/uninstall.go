@@ -19,8 +19,8 @@ var uninstallCmd = &cobra.Command{
 		return helm.HelmUninstall(releaseName, uninstallNamespace) 
 	},
 	Example: `
-	smurf helm uninstall my-release
-	smurf helm uninstall my-release -n my-namespace
+	smurf selm uninstall my-release
+	smurf selm uninstall my-release -n my-namespace
 	`,
 }
 
