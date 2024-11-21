@@ -29,7 +29,7 @@ runs:
     AWS_ACCOUNT_ID: ${{ inputs.AWS_ACCOUNT_ID }}
     AWS_REGION: ${{ inputs.AWS_REGION }}
   args:
-    - stf
+    - selm
     - ${{ inputs.command }}
     # - --provider=${{ inputs.provider }}
 
