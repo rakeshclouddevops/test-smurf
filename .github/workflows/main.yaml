@@ -20,7 +20,7 @@ jobs:
     steps:
       # Step 1: Checkout Code
       - name: Checkout code
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.2
 
       # Step 2: Configure AWS Credentials
       - name: Configure AWS credentials
