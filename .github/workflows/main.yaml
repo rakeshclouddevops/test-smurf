@@ -1,47 +1,84 @@
-name: smurf AWS authentication testing
+# name: smurf AWS authentication testing
+
+# on:
+#   push:
+#     branches:
+#       - master
+#   workflow_dispatch:
+
+# jobs:
+#   docker-build-publish:
+#     runs-on: ubuntu-latest
+#     permissions: write-all
+
+#     env:
+#       DOCKER_IMAGE: testing
+#       DOCKER_TAG: 'rakeshkgang/smurf:v1'
+#       AWS_REGION: us-east-1
+#       AWS_ACCOUNT_ID: '924144197303'
+
+#     steps:
+#       # Step 1: Checkout Code
+#       - name: Checkout code
+#         uses: actions/checkout@v4.1.7
+
+#       # Step 2: Configure AWS Credentials
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: arn:aws:iam::924144197303:role/github-oidc-terraform-role-21
+#           role-session-name: aws-auth
+#           aws-region: ${{ env.AWS_REGION }}
+
+#       # Step 3: Initialize and Plan Terraform
+#       - name: Run helm create
+#         uses: rakeshclouddevops/test-smurf@master
+#         with:
+#           command: create
+
+#       # - name: Run Terraform Plan
+#       #   uses: Manjeet-Singh2428/SmurfTest@master
+#       #   with:
+#       #     command: plan
+
+#       # - name: Run Terraform apply
+#       #   uses: Manjeet-Singh2428/SmurfTest@master
+#       #   with:
+#       #     command: apply
+name: Helm Test on Minikube with Smurf Selm
 
 on:
   push:
     branches:
-      - master
-  workflow_dispatch:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  docker-build-publish:
+  helm-test:
     runs-on: ubuntu-latest
-    permissions: write-all
-
-    env:
-      DOCKER_IMAGE: testing
-      DOCKER_TAG: 'rakeshkgang/smurf:v1'
-      AWS_REGION: us-east-1
-      AWS_ACCOUNT_ID: '924144197303'
 
     steps:
-      # Step 1: Checkout Code
       - name: Checkout code
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v3
 
-      # Step 2: Configure AWS Credentials
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Create Helm Chart with Smurf Selm
+        uses: ./.github/actions/helm-smurf
         with:
-          role-to-assume: arn:aws:iam::924144197303:role/github-oidc-terraform-role-21
-          role-session-name: aws-auth
-          aws-region: ${{ env.AWS_REGION }}
+          kubeconfig: '/tmp/kubeconfig'
+          helm_chart: './charts/my-chart'  # Path to create the chart
+          release_name: 'my-release'
+          namespace: 'default'
+          smurf_version: 'latest'
+          action: 'create'  # Create the Helm chart
 
-      # Step 3: Initialize and Plan Terraform
-      - name: Run helm create
-        uses: rakeshclouddevops/test-smurf@master
+      - name: Install Helm Chart with Smurf Selm
+        uses: ./.github/actions/helm-smurf
         with:
-          command: create
-
-      # - name: Run Terraform Plan
-      #   uses: Manjeet-Singh2428/SmurfTest@master
-      #   with:
-      #     command: plan
-
-      # - name: Run Terraform apply
-      #   uses: Manjeet-Singh2428/SmurfTest@master
-      #   with:
-      #     command: apply
+          kubeconfig: '/tmp/kubeconfig'
+          helm_chart: './charts/my-chart'  # Path where the chart was created
+          release_name: 'my-release'
+          namespace: 'default'
+          smurf_version: 'latest'
+          action: 'install'  # Install the created Helm chart
